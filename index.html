@@ -47,7 +47,6 @@
       font-weight: bold;
       display: none;
     }
-
   </style>
 </head>
 <body>
@@ -60,6 +59,7 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
+    // Player 1 setup
     const player1 = {
       x: 100,
       y: 100,
@@ -74,8 +74,10 @@
       direction: 'right',
       swing: false,
       lastSwingTime: 0,
+      swordUpgraded: false,
     };
 
+    // Player 2 setup
     const player2 = {
       x: 600,
       y: 100,
@@ -90,19 +92,28 @@
       direction: 'left',
       swing: false,
       lastSwingTime: 0,
+      swordUpgraded: false,
     };
 
-    let keys = {};
-    let gameOver = false;
+    // Items
+    const items = [];
+    const itemTypes = ['health', 'swordUpgrade', 'speedBoost'];
 
-    window.addEventListener('keydown', (e) => {
-      keys[e.key] = true;
-    });
+    // Random item generation
+    function spawnItem() {
+      const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+      const item = {
+        x: Math.random() * (canvas.width - 50),
+        y: Math.random() * (canvas.height - 50),
+        width: 30,
+        height: 30,
+        type: itemType,
+        color: itemType === 'health' ? 'green' : itemType === 'swordUpgrade' ? 'yellow' : 'purple',
+      };
+      items.push(item);
+    }
 
-    window.addEventListener('keyup', (e) => {
-      keys[e.key] = false;
-    });
-
+    // Draw function for players and items
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -160,11 +171,42 @@
         ctx.restore();
       }
 
-      // Draw Health Bars
+      // Draw items
+      items.forEach(item => {
+        ctx.fillStyle = item.color;
+        ctx.fillRect(item.x, item.y, item.width, item.height);
+      });
+
+      // Health Bars
       document.getElementById('healthBar1').innerText = `Player 1 Health: ${player1.health}`;
       document.getElementById('healthBar2').innerText = `Player 2 Health: ${player2.health}`;
     }
 
+    // Check for item collisions
+    function checkItemCollision(player) {
+      items.forEach((item, index) => {
+        if (player.x < item.x + item.width &&
+            player.x + player.width > item.x &&
+            player.y < item.y + item.height &&
+            player.y + player.height > item.y) {
+          
+          // Apply item effect
+          if (item.type === 'health') {
+            player.health = Math.min(player.health + 20, 100);
+          } else if (item.type === 'swordUpgrade') {
+            player.swordLength += 20;
+            player.swordUpgraded = true;
+          } else if (item.type === 'speedBoost') {
+            player.speed += 2;
+          }
+
+          // Remove the item
+          items.splice(index, 1);
+        }
+      });
+    }
+
+    // Move players based on keys pressed
     function movePlayers() {
       if (keys['w'] && player1.y > 0) player1.y -= player1.speed;
       if (keys['s'] && player1.y < canvas.height - player1.height) player1.y += player1.speed;
@@ -177,35 +219,59 @@
       if (keys['ArrowRight'] && player2.x < canvas.width - player2.width) player2.x += player2.speed;
     }
 
-    function swordSwing() {
-      if (player1.swing && Date.now() - player1.lastSwingTime > 500) {
-        player1.swordAngle += player1.swordSwingSpeed;
-        player1.lastSwingTime = Date.now();
-      }
-      if (player2.swing && Date.now() - player2.lastSwingTime > 500) {
-        player2.swordAngle += player2.swordSwingSpeed;
-        player2.lastSwingTime = Date.now();
-      }
-    }
-
+    // Sword mechanics (only damage when touching body)
     function swordCollision() {
       // Player 1 sword collision with Player 2
-      if (player1.direction === 'right' && player1.x + player1.width < player2.x && player1.y < player2.y + player2.height && player1.y + player1.height > player2.y) {
+      if (player1.direction === 'right' &&
+          player1.x + player1.width < player2.x && 
+          player1.y < player2.y + player2.height && 
+          player1.y + player1.height > player2.y &&
+          Math.abs(player1.x + player1.width - player2.x) <= player1.swordLength) {
         player2.health -= 2;
       }
-      if (player1.direction === 'left' && player1.x > player2.x + player2.width && player1.y < player2.y + player2.height && player1.y + player1.height > player2.y) {
+      
+      if (player1.direction === 'left' &&
+          player1.x > player2.x + player2.width && 
+          player1.y < player2.y + player2.height && 
+          player1.y + player1.height > player2.y &&
+          Math.abs(player1.x - (player2.x + player2.width)) <= player1.swordLength) {
         player2.health -= 2;
       }
 
       // Player 2 sword collision with Player 1
-      if (player2.direction === 'right' && player2.x + player2.width < player1.x && player2.y < player1.y + player1.height && player2.y + player2.height > player1.y) {
+      if (player2.direction === 'right' &&
+          player2.x + player2.width < player1.x &&
+          player2.y < player1.y + player1.height &&
+          player2.y + player2.height > player1.y &&
+          Math.abs(player2.x + player2.width - player1.x) <= player2.swordLength) {
         player1.health -= 2;
       }
-      if (player2.direction === 'left' && player2.x > player1.x + player1.width && player2.y < player1.y + player1.height && player2.y + player2.height > player1.y) {
+      
+      if (player2.direction === 'left' &&
+          player2.x > player1.x + player1.width &&
+          player2.y < player1.y + player1.height &&
+          player2.y + player2.height > player1.y &&
+          Math.abs(player2.x - (player1.x + player1.width)) <= player2.swordLength) {
         player1.health -= 2;
       }
     }
 
+    // Game loop
+    function gameLoop() {
+      movePlayers();
+      checkItemCollision(player1);
+      checkItemCollision(player2);
+      swordCollision();
+      draw();
+
+      if (player1.health <= 0 || player2.health <= 0) {
+        showWinner(player1.health <= 0 ? 'Player 2' : 'Player 1');
+      } else {
+        requestAnimationFrame(gameLoop);
+      }
+    }
+
+    // Show winner message
     function showWinner(winner) {
       const winMessage = document.getElementById('winMessage');
       winMessage.innerText = `${winner} wins!`;
@@ -215,28 +281,13 @@
       }, 3000);
     }
 
-    function gameLoop() {
-      if (gameOver) return;
-
-      movePlayers();
-      swordSwing();
-      swordCollision();
-      draw();
-
-      if (player1.health <= 0) {
-        showWinner('Player 2');
-        gameOver = true;
-      }
-      if (player2.health <= 0) {
-        showWinner('Player 1');
-        gameOver = true;
-      }
-
-      requestAnimationFrame(gameLoop);
+    // Item spawning and game initialization
+    function startGame() {
+      setInterval(spawnItem, 5000); // Spawn a new item every 5 seconds
+      gameLoop();
     }
 
-    gameLoop();
+    startGame();
   </script>
 </body>
 </html>
-
