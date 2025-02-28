@@ -1,1 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player vs Player Sword Fight</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #222;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      border: 5px solid #ccc;
+      background-color: #333;
+    }
+
+    #healthBar1, #healthBar2 {
+      position: absolute;
+      top: 20px;
+      color: white;
+      font-size: 20px;
+      margin: 0;
+    }
+
+    #healthBar1 {
+      left: 20px;
+    }
+
+    #healthBar2 {
+      right: 20px;
+    }
+
+    .win-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 30px;
+      font-weight: bold;
+      display: none;
+    }
+
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <p id="healthBar1">Player 1 Health: 100</p>
+  <p id="healthBar2">Player 2 Health: 100</p>
+  <div class="win-message" id="winMessage"></div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const player1 = {
+      x: 100,
+      y: 100,
+      width: 50,
+      height: 50,
+      color: 'blue',
+      speed: 5,
+      health: 100,
+      swordLength: 40,
+      swordAngle: 0,
+      swordSwingSpeed: 0.1,
+      direction: 'right',
+      swing: false,
+      lastSwingTime: 0,
+    };
+
+    const player2 = {
+      x: 600,
+      y: 100,
+      width: 50,
+      height: 50,
+      color: 'red',
+      speed: 5,
+      health: 100,
+      swordLength: 40,
+      swordAngle: 0,
+      swordSwingSpeed: -0.1,
+      direction: 'left',
+      swing: false,
+      lastSwingTime: 0,
+    };
+
+    let keys = {};
+    let gameOver = false;
+
+    window.addEventListener('keydown', (e) => {
+      keys[e.key] = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.key] = false;
+    });
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Player 1
+      ctx.fillStyle = player1.color;
+      ctx.fillRect(player1.x, player1.y, player1.width, player1.height);
+
+      // Draw Player 2
+      ctx.fillStyle = player2.color;
+      ctx.fillRect(player2.x, player2.y, player2.width, player2.height);
+
+      // Draw sword for Player 1 (with swinging effect)
+      ctx.strokeStyle = 'yellow';
+      ctx.lineWidth = 5;
+      if (player1.direction === 'right') {
+        ctx.save();
+        ctx.translate(player1.x + player1.width, player1.y + player1.height / 2);
+        ctx.rotate(player1.swordAngle);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(player1.swordLength, 0);
+        ctx.stroke();
+        ctx.restore();
+      } else if (player1.direction === 'left') {
+        ctx.save();
+        ctx.translate(player1.x, player1.y + player1.height / 2);
+        ctx.rotate(player1.swordAngle);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-player1.swordLength, 0);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Draw sword for Player 2 (with swinging effect)
+      ctx.strokeStyle = 'orange';
+      ctx.lineWidth = 5;
+      if (player2.direction === 'right') {
+        ctx.save();
+        ctx.translate(player2.x + player2.width, player2.y + player2.height / 2);
+        ctx.rotate(player2.swordAngle);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(player2.swordLength, 0);
+        ctx.stroke();
+        ctx.restore();
+      } else if (player2.direction === 'left') {
+        ctx.save();
+        ctx.translate(player2.x, player2.y + player2.height / 2);
+        ctx.rotate(player2.swordAngle);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-player2.swordLength, 0);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Draw Health Bars
+      document.getElementById('healthBar1').innerText = `Player 1 Health: ${player1.health}`;
+      document.getElementById('healthBar2').innerText = `Player 2 Health: ${player2.health}`;
+    }
+
+    function movePlayers() {
+      if (keys['w'] && player1.y > 0) player1.y -= player1.speed;
+      if (keys['s'] && player1.y < canvas.height - player1.height) player1.y += player1.speed;
+      if (keys['a'] && player1.x > 0) player1.x -= player1.speed;
+      if (keys['d'] && player1.x < canvas.width - player1.width) player1.x += player1.speed;
+
+      if (keys['ArrowUp'] && player2.y > 0) player2.y -= player2.speed;
+      if (keys['ArrowDown'] && player2.y < canvas.height - player2.height) player2.y += player2.speed;
+      if (keys['ArrowLeft'] && player2.x > 0) player2.x -= player2.speed;
+      if (keys['ArrowRight'] && player2.x < canvas.width - player2.width) player2.x += player2.speed;
+    }
+
+    function swordSwing() {
+      if (player1.swing && Date.now() - player1.lastSwingTime > 500) {
+        player1.swordAngle += player1.swordSwingSpeed;
+        player1.lastSwingTime = Date.now();
+      }
+      if (player2.swing && Date.now() - player2.lastSwingTime > 500) {
+        player2.swordAngle += player2.swordSwingSpeed;
+        player2.lastSwingTime = Date.now();
+      }
+    }
+
+    function swordCollision() {
+      // Player 1 sword collision with Player 2
+      if (player1.direction === 'right' && player1.x + player1.width < player2.x && player1.y < player2.y + player2.height && player1.y + player1.height > player2.y) {
+        player2.health -= 2;
+      }
+      if (player1.direction === 'left' && player1.x > player2.x + player2.width && player1.y < player2.y + player2.height && player1.y + player1.height > player2.y) {
+        player2.health -= 2;
+      }
+
+      // Player 2 sword collision with Player 1
+      if (player2.direction === 'right' && player2.x + player2.width < player1.x && player2.y < player1.y + player1.height && player2.y + player2.height > player1.y) {
+        player1.health -= 2;
+      }
+      if (player2.direction === 'left' && player2.x > player1.x + player1.width && player2.y < player1.y + player1.height && player2.y + player2.height > player1.y) {
+        player1.health -= 2;
+      }
+    }
+
+    function showWinner(winner) {
+      const winMessage = document.getElementById('winMessage');
+      winMessage.innerText = `${winner} wins!`;
+      winMessage.style.display = 'block';
+      setTimeout(() => {
+        winMessage.style.display = 'none';
+      }, 3000);
+    }
+
+    function gameLoop() {
+      if (gameOver) return;
+
+      movePlayers();
+      swordSwing();
+      swordCollision();
+      draw();
+
+      if (player1.health <= 0) {
+        showWinner('Player 2');
+        gameOver = true;
+      }
+      if (player2.health <= 0) {
+        showWinner('Player 1');
+        gameOver = true;
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
+</body>
+</html>
 
