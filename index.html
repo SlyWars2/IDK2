@@ -7,36 +7,24 @@
   <style>
     body {
       margin: 0;
-      padding: 0;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
       background-color: #222;
-      font-family: Arial, sans-serif;
     }
-
     canvas {
-      border: 5px solid #ccc;
+      border: 5px solid white;
       background-color: #333;
     }
-
     #healthBar1, #healthBar2 {
       position: absolute;
       top: 20px;
       color: white;
       font-size: 20px;
-      margin: 0;
     }
-
-    #healthBar1 {
-      left: 20px;
-    }
-
-    #healthBar2 {
-      right: 20px;
-    }
-
+    #healthBar1 { left: 20px; }
+    #healthBar2 { right: 20px; }
     .win-message {
       position: absolute;
       top: 50%;
@@ -54,240 +42,107 @@
   <p id="healthBar1">Player 1 Health: 100</p>
   <p id="healthBar2">Player 2 Health: 100</p>
   <div class="win-message" id="winMessage"></div>
-
   <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    const keys = {};
+    window.addEventListener('keydown', e => keys[e.key] = true);
+    window.addEventListener('keyup', e => keys[e.key] = false);
 
-    // Player 1 setup
-    const player1 = {
-      x: 100,
-      y: 100,
-      width: 50,
-      height: 50,
-      color: 'blue',
-      speed: 5,
-      health: 100,
-      swordLength: 40,
-      swordAngle: 0,
-      swordSwingSpeed: 0.1,
-      direction: 'right',
-      swing: false,
-      lastSwingTime: 0,
-      swordUpgraded: false,
-    };
-
-    // Player 2 setup
-    const player2 = {
-      x: 600,
-      y: 100,
-      width: 50,
-      height: 50,
-      color: 'red',
-      speed: 5,
-      health: 100,
-      swordLength: 40,
-      swordAngle: 0,
-      swordSwingSpeed: -0.1,
-      direction: 'left',
-      swing: false,
-      lastSwingTime: 0,
-      swordUpgraded: false,
-    };
-
-    // Items
-    const items = [];
-    const itemTypes = ['health', 'swordUpgrade', 'speedBoost'];
-
-    // Random item generation
-    function spawnItem() {
-      const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
-      const item = {
-        x: Math.random() * (canvas.width - 50),
-        y: Math.random() * (canvas.height - 50),
-        width: 30,
-        height: 30,
-        type: itemType,
-        color: itemType === 'health' ? 'green' : itemType === 'swordUpgrade' ? 'yellow' : 'purple',
-      };
-      items.push(item);
+    class Player {
+      constructor(x, y, color, keys) {
+        this.x = x;
+        this.y = y;
+        this.width = 50;
+        this.height = 50;
+        this.color = color;
+        this.speed = 5;
+        this.health = 100;
+        this.swordLength = 40;
+        this.direction = 'right';
+        this.keys = keys;
+      }
+      move() {
+        if (keys[this.keys.up] && this.y > 0) this.y -= this.speed;
+        if (keys[this.keys.down] && this.y < canvas.height - this.height) this.y += this.speed;
+        if (keys[this.keys.left] && this.x > 0) {
+          this.x -= this.speed;
+          this.direction = 'left';
+        }
+        if (keys[this.keys.right] && this.x < canvas.width - this.width) {
+          this.x += this.speed;
+          this.direction = 'right';
+        }
+      }
+      draw() {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        if (this.direction === 'right') {
+          ctx.moveTo(this.x + this.width, this.y + this.height / 2);
+          ctx.lineTo(this.x + this.width + this.swordLength, this.y + this.height / 2);
+        } else {
+          ctx.moveTo(this.x, this.y + this.height / 2);
+          ctx.lineTo(this.x - this.swordLength, this.y + this.height / 2);
+        }
+        ctx.stroke();
+      }
     }
-
-    // Draw function for players and items
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw Player 1
-      ctx.fillStyle = player1.color;
-      ctx.fillRect(player1.x, player1.y, player1.width, player1.height);
-
-      // Draw Player 2
-      ctx.fillStyle = player2.color;
-      ctx.fillRect(player2.x, player2.y, player2.width, player2.height);
-
-      // Draw sword for Player 1 (with swinging effect)
-      ctx.strokeStyle = 'yellow';
-      ctx.lineWidth = 5;
-      if (player1.direction === 'right') {
-        ctx.save();
-        ctx.translate(player1.x + player1.width, player1.y + player1.height / 2);
-        ctx.rotate(player1.swordAngle);
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(player1.swordLength, 0);
-        ctx.stroke();
-        ctx.restore();
-      } else if (player1.direction === 'left') {
-        ctx.save();
-        ctx.translate(player1.x, player1.y + player1.height / 2);
-        ctx.rotate(player1.swordAngle);
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-player1.swordLength, 0);
-        ctx.stroke();
-        ctx.restore();
+    
+    const player1 = new Player(100, 100, 'blue', { up: 'w', down: 's', left: 'a', right: 'd' });
+    const player2 = new Player(600, 100, 'red', { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' });
+    const items = [];
+    function spawnItem() {
+      const types = ['health', 'swordUpgrade', 'speedBoost'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      items.push({ x: Math.random() * (canvas.width - 30), y: Math.random() * (canvas.height - 30), width: 30, height: 30, type, color: type === 'health' ? 'green' : type === 'swordUpgrade' ? 'yellow' : 'purple' });
+    }
+    function checkCollision(player, other) {
+      const swordX = player.direction === 'right' ? player.x + player.width : player.x - player.swordLength;
+      if (swordX < other.x + other.width && swordX + player.swordLength > other.x && player.y < other.y + other.height && player.y + player.height > other.y) {
+        other.health -= 1;
       }
-
-      // Draw sword for Player 2 (with swinging effect)
-      ctx.strokeStyle = 'orange';
-      ctx.lineWidth = 5;
-      if (player2.direction === 'right') {
-        ctx.save();
-        ctx.translate(player2.x + player2.width, player2.y + player2.height / 2);
-        ctx.rotate(player2.swordAngle);
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(player2.swordLength, 0);
-        ctx.stroke();
-        ctx.restore();
-      } else if (player2.direction === 'left') {
-        ctx.save();
-        ctx.translate(player2.x, player2.y + player2.height / 2);
-        ctx.rotate(player2.swordAngle);
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-player2.swordLength, 0);
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // Draw items
+    }
+    function checkItemCollision(player) {
+      items.forEach((item, i) => {
+        if (player.x < item.x + item.width && player.x + player.width > item.x && player.y < item.y + item.height && player.y + player.height > item.y) {
+          if (item.type === 'health') player.health = Math.min(player.health + 20, 100);
+          else if (item.type === 'swordUpgrade') player.swordLength += 10;
+          else if (item.type === 'speedBoost') player.speed += 1;
+          items.splice(i, 1);
+        }
+      });
+    }
+    function drawItems() {
       items.forEach(item => {
         ctx.fillStyle = item.color;
         ctx.fillRect(item.x, item.y, item.width, item.height);
       });
-
-      // Health Bars
-      document.getElementById('healthBar1').innerText = `Player 1 Health: ${player1.health}`;
-      document.getElementById('healthBar2').innerText = `Player 2 Health: ${player2.health}`;
     }
-
-    // Check for item collisions
-    function checkItemCollision(player) {
-      items.forEach((item, index) => {
-        if (player.x < item.x + item.width &&
-            player.x + player.width > item.x &&
-            player.y < item.y + item.height &&
-            player.y + player.height > item.y) {
-          
-          // Apply item effect
-          if (item.type === 'health') {
-            player.health = Math.min(player.health + 20, 100);
-          } else if (item.type === 'swordUpgrade') {
-            player.swordLength += 20;
-            player.swordUpgraded = true;
-          } else if (item.type === 'speedBoost') {
-            player.speed += 2;
-          }
-
-          // Remove the item
-          items.splice(index, 1);
-        }
-      });
-    }
-
-    // Move players based on keys pressed
-    function movePlayers() {
-      if (keys['w'] && player1.y > 0) player1.y -= player1.speed;
-      if (keys['s'] && player1.y < canvas.height - player1.height) player1.y += player1.speed;
-      if (keys['a'] && player1.x > 0) player1.x -= player1.speed;
-      if (keys['d'] && player1.x < canvas.width - player1.width) player1.x += player1.speed;
-
-      if (keys['ArrowUp'] && player2.y > 0) player2.y -= player2.speed;
-      if (keys['ArrowDown'] && player2.y < canvas.height - player2.height) player2.y += player2.speed;
-      if (keys['ArrowLeft'] && player2.x > 0) player2.x -= player2.speed;
-      if (keys['ArrowRight'] && player2.x < canvas.width - player2.width) player2.x += player2.speed;
-    }
-
-    // Sword mechanics (only damage when touching body)
-    function swordCollision() {
-      // Player 1 sword collision with Player 2
-      if (player1.direction === 'right' &&
-          player1.x + player1.width < player2.x && 
-          player1.y < player2.y + player2.height && 
-          player1.y + player1.height > player2.y &&
-          Math.abs(player1.x + player1.width - player2.x) <= player1.swordLength) {
-        player2.health -= 2;
-      }
-      
-      if (player1.direction === 'left' &&
-          player1.x > player2.x + player2.width && 
-          player1.y < player2.y + player2.height && 
-          player1.y + player1.height > player2.y &&
-          Math.abs(player1.x - (player2.x + player2.width)) <= player1.swordLength) {
-        player2.health -= 2;
-      }
-
-      // Player 2 sword collision with Player 1
-      if (player2.direction === 'right' &&
-          player2.x + player2.width < player1.x &&
-          player2.y < player1.y + player1.height &&
-          player2.y + player2.height > player1.y &&
-          Math.abs(player2.x + player2.width - player1.x) <= player2.swordLength) {
-        player1.health -= 2;
-      }
-      
-      if (player2.direction === 'left' &&
-          player2.x > player1.x + player1.width &&
-          player2.y < player1.y + player1.height &&
-          player2.y + player2.height > player1.y &&
-          Math.abs(player2.x - (player1.x + player1.width)) <= player2.swordLength) {
-        player1.health -= 2;
-      }
-    }
-
-    // Game loop
-    function gameLoop() {
-      movePlayers();
+    function updateGame() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      player1.move();
+      player2.move();
+      checkCollision(player1, player2);
+      checkCollision(player2, player1);
       checkItemCollision(player1);
       checkItemCollision(player2);
-      swordCollision();
-      draw();
-
+      player1.draw();
+      player2.draw();
+      drawItems();
+      document.getElementById('healthBar1').innerText = `Player 1 Health: ${player1.health}`;
+      document.getElementById('healthBar2').innerText = `Player 2 Health: ${player2.health}`;
       if (player1.health <= 0 || player2.health <= 0) {
-        showWinner(player1.health <= 0 ? 'Player 2' : 'Player 1');
+        document.getElementById('winMessage').innerText = `${player1.health <= 0 ? 'Player 2' : 'Player 1'} Wins!`;
+        document.getElementById('winMessage').style.display = 'block';
       } else {
-        requestAnimationFrame(gameLoop);
+        requestAnimationFrame(updateGame);
       }
     }
-
-    // Show winner message
-    function showWinner(winner) {
-      const winMessage = document.getElementById('winMessage');
-      winMessage.innerText = `${winner} wins!`;
-      winMessage.style.display = 'block';
-      setTimeout(() => {
-        winMessage.style.display = 'none';
-      }, 3000);
-    }
-
-    // Item spawning and game initialization
-    function startGame() {
-      setInterval(spawnItem, 5000); // Spawn a new item every 5 seconds
-      gameLoop();
-    }
-
-    startGame();
+    setInterval(spawnItem, 5000);
+    updateGame();
   </script>
 </body>
 </html>
